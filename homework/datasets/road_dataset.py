@@ -50,7 +50,7 @@ class RoadDataset(Dataset):
         # My Code
         if transform_pipeline == "state_only":
           ...
-        elif transform_pipeline == "image_only":
+        elif transform_pipeline == "state_only":
           from .import road_transforms
           return road_transforms.Compose([
             road_transforms.ImageLoader(self.episode_path),
