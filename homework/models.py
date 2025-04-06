@@ -27,9 +27,11 @@ class MLPPlanner(nn.Module):
 
         #I made these changes
         input_dim = n_track * 2 * 2
-        output_dim = n_waypoints = n_waypoints
+        output_dim = n_waypoints * 2
 
-        self.net = nn.Sequential(nn.Linear(input_dim, 128), nn.ReLU(), nn.Linear(128,128), nn.ReLU(), nn.Linear(128, output_dim),)
+        self.net = nn.Sequential(nn.Linear(input_dim, 128), nn.ReLU(), nn.Linear(128,128), nn.ReLU(),)
+        self.head = nn.Linear(128, n_waypoints * 2)
+    
         #I made these changes
 
     def forward(
@@ -52,13 +54,22 @@ class MLPPlanner(nn.Module):
             torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
         """
         #Made these changes
+
+
+        def normalize(t):
+          mean = t.mean(dim=1, keepdim=True)
+          std = t.std(dim=1, keepdim=True) + 1e-6
+          return (t - mean) / std
+        track_left = normalize(track_left)
+        track_right = normalize(track_right)
+
         x = torch.cat([track_left, track_right], dim=1)
         x = x.view(x.size(0), -1)
+        features = self.net(x)
+        out = self.head(features)
+        #assert out.shape[1:] == (self.n_waypoints, 2), f"Got {out.shape}"
 
-        out = self.net(x)
-        out = out.view(-1, self.n_waypoints, 2)
-
-        return out
+        return out.view(-1, self.n_waypoints, 2)
         #Made these changes
 
 
@@ -68,13 +79,19 @@ class TransformerPlanner(nn.Module):
         n_track: int = 10,
         n_waypoints: int = 3,
         d_model: int = 64,
+        n_heads: int = 4,
+        n_layers: int = 2,
     ):
         super().__init__()
 
         self.n_track = n_track
         self.n_waypoints = n_waypoints
-
+        self.d_model = d_model
+        self.input_proj = nn.Linear(2, d_model)
         self.query_embed = nn.Embedding(n_waypoints, d_model)
+        decoder_layer = nn.TransformerDecoderLayer(d_model = d_model, nhead=n_heads, batch_first=True)
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=n_layers)
+        self.output_proj = nn.Linear(d_model, 2)
 
     def forward(
         self,
@@ -95,7 +112,14 @@ class TransformerPlanner(nn.Module):
         Returns:
             torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
         """
-        raise NotImplementedError
+        B = track_left.shape[0]
+        track = torch.cat([track_left, track_right], dim =1)
+        track_feat = self.input_proj(track)
+        query_indices = torch.arange(self.n_waypoints, device=track.device).unsqueeze(0).expand(B, -1)
+        queries = self.query_embed(query_indices) 
+        attended = self.decoder(queries, track_feat)
+        out = self.output_proj(attended)
+        return out
 
 
 class CNNPlanner(torch.nn.Module):
