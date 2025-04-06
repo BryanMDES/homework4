@@ -43,7 +43,7 @@ class RoadDataset(Dataset):
           ...
         elif transform_pipeline == "image_only":
           from .import road_transforms
-          return rooad_transforms.Compose([
+          return road_transforms.Compose([
             road_transforms.ToImageTensor(),
             road_transforms.SelectKeys(["image", "waypoints", "waypoints_mask"]),
         ])
