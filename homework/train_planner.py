@@ -11,9 +11,9 @@ from homework.models import load_model, save_model
 def train(model_name, num_epoch, lr, batch_size=64, device=None):
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-    print(f"Training {model_name} on {device}")
-    print(f"Requested batch size: {batch_size}")
-    print(f"[DEBUG] DataLoader batch_size = {batch_size}")
+    #print(f"Training {model_name} on {device}")
+    #print(f"Requested batch size: {batch_size}")
+    #print(f"[DEBUG] DataLoader batch_size = {batch_size}")
 
 
     # Load data
@@ -70,10 +70,10 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
             
             
             pred = model(**inputs)
-            print(f"track_left: {track_left.shape}, device: {track_left.device}")
-            print(f"track_right: {track_right.shape}, device: {track_right.device}")
-            print(f"Model is on device: {next(model.parameters()).device}")
-            print(f"pred.shape = {pred.shape}")
+            #print(f"track_left: {track_left.shape}, device: {track_left.device}")
+            #print(f"track_right: {track_right.shape}, device: {track_right.device}")
+            #print(f"Model is on device: {next(model.parameters()).device}")
+            #print(f"pred.shape = {pred.shape}")
 
             
             # We are training a race car AI and every car (in a batch) sees a track
@@ -121,4 +121,5 @@ if __name__ == "__main__":
         model_name=args.model_name,
         num_epoch=args.num_epoch,
         lr=args.lr,
+        batch_size=args.batch_size
     )
