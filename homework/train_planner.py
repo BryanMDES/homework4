@@ -19,7 +19,7 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
     # Load data
     dataloader = load_data(
       dataset_path="/content/homework4/drive_data/train",
-      transform_pipeline="state_only",  # Load validation images in batches of 32, no random changes here because we are using this to test on how good th model is
+      transform_pipeline="image_only",  # Load validation images in batches of 32, no random changes here because we are using this to test on how good th model is
       return_dataloader=True,
       batch_size=batch_size,
       shuffle=True,
