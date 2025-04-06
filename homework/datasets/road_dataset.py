@@ -45,7 +45,7 @@ class RoadDataset(Dataset):
           from .import road_transforms
           return road_transforms.Compose([
             road_transforms.ImageLoader(self.episode_path),
-            road_transforms.SelectKeys(["image", "waypoints", "waypoints_mask"]),
+            road_transforms.FilterKeys(["image", "waypoints", "waypoints_mask"]),
         ])
         else:
           raise ValueError(f"Invalid transform {transform_pipeline} specified!")
