@@ -54,6 +54,7 @@ class RoadDataset(Dataset):
           from .import road_transforms
           return road_transforms.Compose([
             road_transforms.ImageLoader(self.episode_path),
+            road_transforms.EgoTrackProcessor(self.track),
             FilterKeys(["image", "waypoints", "waypoints_mask"]),
         ])
         else:
