@@ -120,6 +120,8 @@ class TransformerPlanner(nn.Module):
         attended = self.decoder(queries, track_feat)
         out = self.output_proj(attended)
         return out
+        
+
 
 
 class CNNPlanner(torch.nn.Module):
@@ -153,8 +155,11 @@ class CNNPlanner(torch.nn.Module):
         )
 
         self.head = nn.Sequential(
+            #self.flatten = nn.Flatten(),
+            #self.fc1 = nn.Linear(128 * H * W, 128) 
+            #3self.fc2 = nn.Linear(128, n_waypoints * 2)
             nn.Flatten(),
-            nn.Linear(128 * 8 * 8, 128),
+            nn.Linear(128 * 12 * 16, 128),
             nn.ReLU(),
             nn.Linear(128, n_waypoints * 2),
         )
