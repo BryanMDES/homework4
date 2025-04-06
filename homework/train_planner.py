@@ -15,15 +15,15 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
     #print(f"Requested batch size: {batch_size}")
     #print(f"[DEBUG] DataLoader batch_size = {batch_size}")
 
-
+    transform_pipeline = ("state_only" if model_name in ["mlp_planner", "transformer_planner"] else "image_only")    
     # Load data
     dataloader = load_data(
       dataset_path="/content/homework4/drive_data/train",
-      transform_pipeline="image_only",  # Load validation images in batches of 32, no random changes here because we are using this to test on how good th model is
+      transform_pipeline=transform_pipeline,  # Load validation images in batches of 32, no random changes here because we are using this to test on how good th model is
       return_dataloader=True,
       batch_size=batch_size,
-      shuffle=True,
-)
+      shuffle=True,)
+
 
 
     # Load model
