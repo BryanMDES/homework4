@@ -1,7 +1,7 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader
-from torch.nn import MSELoss
+from torch.nn import HuberLoss
 from torch.optim import Adam
 from homework.datasets.road_dataset import load_data
 from homework.models import load_model, save_model
@@ -32,7 +32,7 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
 
     # Setup optimizer and loss
     optimizer = Adam(model.parameters(), lr=lr)
-    loss_fn = MSELoss()
+    loss_fn = HuberLoss(delta=1.0)
 
     # Training loop
     for epoch in range(num_epoch):
