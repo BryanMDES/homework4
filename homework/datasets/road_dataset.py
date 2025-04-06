@@ -6,6 +6,15 @@ from torch.utils.data import ConcatDataset, DataLoader, Dataset
 from . import road_transforms
 from .road_utils import Track
 
+# My class my code
+class FilterKeys:
+    def __init__(self, keep_keys):
+        self.keep_keys = keep_keys
+
+    def __call__(self, sample):
+        return {k: v for k, v in sample.items() if k in self.keep_keys}
+# MY code
+
 
 class RoadDataset(Dataset):
     """
@@ -45,7 +54,7 @@ class RoadDataset(Dataset):
           from .import road_transforms
           return road_transforms.Compose([
             road_transforms.ImageLoader(self.episode_path),
-            road_transforms.FilterKeys(["image", "waypoints", "waypoints_mask"]),
+            FilterKeys(["image", "waypoints", "waypoints_mask"]),
         ])
         else:
           raise ValueError(f"Invalid transform {transform_pipeline} specified!")
