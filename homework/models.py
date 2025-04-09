@@ -29,8 +29,8 @@ class MLPPlanner(nn.Module):
         input_dim = n_track * 2 * 2
         output_dim = n_waypoints * 2
 
-        self.net = nn.Sequential(nn.Linear(input_dim, 128), nn.ReLU(), nn.Linear(128,128), nn.ReLU(),)
-        self.head = nn.Linear(128, n_waypoints * 2)
+        self.net = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(),nn.Dropout(0.1), nn.Linear(256,128), nn.ReLU(),nn.Dropout(0.1),nn.Linear(128, output_dim),)
+        #self.head = nn.Linear(128, n_waypoints * 2)
     
         #I made these changes
 
@@ -65,8 +65,8 @@ class MLPPlanner(nn.Module):
 
         x = torch.cat([track_left, track_right], dim=1)
         x = x.view(x.size(0), -1)
-        features = self.net(x)
-        out = self.head(features)
+        #features = self.net(x)
+        out = self.net(x)
         #assert out.shape[1:] == (self.n_waypoints, 2), f"Got {out.shape}"
 
         return out.view(-1, self.n_waypoints, 2)
