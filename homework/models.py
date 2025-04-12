@@ -129,10 +129,12 @@ class CNNPlanner(torch.nn.Module):
 
         self.n_waypoints = n_waypoints
 
+        # Storing the image mean and standard deviation
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN), persistent=False)
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD), persistent=False)
-        # This is my code
+        
 
+        # Features
         self.conv_layers = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(32),
@@ -151,15 +153,12 @@ class CNNPlanner(torch.nn.Module):
         )
 
         self.head = nn.Sequential(
-            #self.flatten = nn.Flatten(),
-            #self.fc1 = nn.Linear(128 * H * W, 128) 
-            #3self.fc2 = nn.Linear(128, n_waypoints * 2)
-            nn.Flatten(),
-            nn.Linear(128 * 12 * 16, 128),
+            nn.Flatten(), # Shape
+            nn.Linear(128 * 12 * 16, 128), # Hidden Layer
             nn.ReLU(),
             nn.Linear(128, n_waypoints * 2),
         )
-        # This is my code
+        
 
     def forward(self, image: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -169,11 +168,11 @@ class CNNPlanner(torch.nn.Module):
         Returns:
             torch.FloatTensor: future waypoints with shape (b, n, 2)
         """
-        ###This is my code
+        # None, ;, None, None] reshapes the buffers to match the image shape
         x = (image - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
-        x = self.conv_layers(x)
-        x = self.head(x)
-        return x.view(-1, self.n_waypoints, 2)
+        x = self.conv_layers(x) # Extracting the features.
+        x = self.head(x) # Flatten and process features through the fully connected layers to 
+        return x.view(-1, self.n_waypoints, 2) # Resahpe the outptu
 
         #raise NotImplementedError
 
