@@ -47,12 +47,10 @@ class RoadDataset(Dataset):
 
         xform = None
 
-        # My Code
         if transform_pipeline == "state_only":
           return road_transforms.EgoTrackProcessor(self.track)
           
         elif transform_pipeline == "image_only":
-          #from .import road_transforms
           return road_transforms.Compose([
             road_transforms.ImageLoader(self.episode_path),
             road_transforms.EgoTrackProcessor(self.track),
@@ -60,26 +58,9 @@ class RoadDataset(Dataset):
         ])
         else:
           raise ValueError(f"Invalid transform {transform_pipeline} specified!")
-          # My Code
 
-        # Class Notes
-        #if transform_pipeline == "default":
-            # image, track_left, track_right, waypoints, waypoints_mask
-        #    xform = road_transforms.Compose(
-        #        [
-        #            road_transforms.ImageLoader(self.episode_path),
-        #            road_transforms.EgoTrackProcessor(self.track),
-        #        ]
-        #    )
-        #elif transform_pipeline == "state_only":
-        #    # track_left, track_right, waypoints, waypoints_mask
-         #   xform = road_transforms.EgoTrackProcessor(self.track)
-        #elif transform_pipeline == "aug":
-            # add your custom augmentations here
-        #    pass
-        # Class Notes
-        if xform is None:
-            raise ValueError(f"Invalid transform {transform_pipeline} specified!")
+        #if xform is None:
+            #raise ValueError(f"Invalid transform {transform_pipeline} specified!")
 
         return xform
 
