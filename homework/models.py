@@ -25,14 +25,12 @@ class MLPPlanner(nn.Module):
         self.n_waypoints = n_waypoints
 
 
-        #I made these changes
-        input_dim = n_track * 2 * 2
-        output_dim = n_waypoints * 2
+        
+        input_dim = n_track * 2 * 2 # How many points we have on one side of the track
+        output_dim = n_waypoints * 2 # Brain guessing where car will go
 
-        self.net = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(),nn.Dropout(0.1), nn.Linear(256,128), nn.ReLU(),nn.Dropout(0.1),nn.Linear(128, output_dim),)
-        #self.head = nn.Linear(128, n_waypoints * 2)
+        self.net = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(),nn.Dropout(0.1), nn.Linear(256,128), nn.ReLU(),nn.Dropout(0.1),nn.Linear(128, output_dim),) #Mapping 128 to 6 outputs
     
-        #I made these changes
 
     def forward(
         self,
@@ -53,24 +51,22 @@ class MLPPlanner(nn.Module):
         Returns:
             torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
         """
-        #Made these changes
-
 
         def normalize(t):
           mean = t.mean(dim=1, keepdim=True)
           std = t.std(dim=1, keepdim=True) + 1e-6
           return (t - mean) / std
+
+        # Combining both sides of the road
         track_left = normalize(track_left)
         track_right = normalize(track_right)
-
         x = torch.cat([track_left, track_right], dim=1)
-        x = x.view(x.size(0), -1)
-        #features = self.net(x)
-        out = self.net(x)
-        #assert out.shape[1:] == (self.n_waypoints, 2), f"Got {out.shape}"
+
+        x = x.view(x.size(0), -1) # Model receiving one long row of numbers
+        out = self.net(x) # Pass the flattened road into the MLD to guess the next way points
 
         return out.view(-1, self.n_waypoints, 2)
-        #Made these changes
+
 
 
 class TransformerPlanner(nn.Module):
@@ -84,14 +80,14 @@ class TransformerPlanner(nn.Module):
     ):
         super().__init__()
 
-        self.n_track = n_track
-        self.n_waypoints = n_waypoints
-        self.d_model = d_model
-        self.input_proj = nn.Linear(2, d_model)
-        self.query_embed = nn.Embedding(n_waypoints, d_model)
-        decoder_layer = nn.TransformerDecoderLayer(d_model = d_model, nhead=n_heads, batch_first=True)
-        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=n_layers)
-        self.output_proj = nn.Linear(d_model, 2)
+        self.n_track = n_track #Stores how many points we have per side of the track
+        self.n_waypoints = n_waypoints #Controls the number of queries the model will use
+        self.d_model = d_model # How wide the model's brain is for thiking
+        self.input_proj = nn.Linear(2, d_model) # Take each x,y point and projects it into a d_model-dimensional vector
+        self.query_embed = nn.Embedding(n_waypoints, d_model) # Creating learnable enbeddings for each waypoint
+        decoder_layer = nn.TransformerDecoderLayer(d_model = d_model, nhead=n_heads, batch_first=True) # Defines one layer of the Transfrmer decoder
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=n_layers) # Stacks multiple decoder layers together to build a deep network
+        self.output_proj = nn.Linear(d_model, 2) # This is what gets returned as the predicted waypoint
 
     def forward(
         self,
@@ -112,13 +108,13 @@ class TransformerPlanner(nn.Module):
         Returns:
             torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
         """
-        B = track_left.shape[0]
-        track = torch.cat([track_left, track_right], dim =1)
-        track_feat = self.input_proj(track)
-        query_indices = torch.arange(self.n_waypoints, device=track.device).unsqueeze(0).expand(B, -1)
-        queries = self.query_embed(query_indices) 
-        attended = self.decoder(queries, track_feat)
-        out = self.output_proj(attended)
+        B = track_left.shape[0] 
+        track = torch.cat([track_left, track_right], dim =1) # Combining the left annd right boundaries into one tensor
+        track_feat = self.input_proj(track) # Projecting the points into a d-mmodel dimensional space
+        query_indices = torch.arange(self.n_waypoints, device=track.device).unsqueeze(0).expand(B, -1) # Creating waypooint IDs
+        queries = self.query_embed(query_indices) # Turning the waypoint ids into learned vectors
+        attended = self.decoder(queries, track_feat) # Matches each query with the track features
+        out = self.output_proj(attended) #X,y coordinates for the predictedwaypoints
         return out
         
 
