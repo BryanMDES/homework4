@@ -6,17 +6,16 @@ from torch.optim import Adam
 from homework.datasets.road_dataset import load_data
 from homework.models import load_model, save_model
 
+"""""""""""""""""
+Training MLP, Transformer, CNN to predict waypoints and learning over many epochs
 
+"""""""""""""""""
 
 def train(model_name, num_epoch, lr, batch_size=64, device=None):
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-    #print(f"Training {model_name} on {device}")
-    #print(f"Requested batch size: {batch_size}")
-    #print(f"[DEBUG] DataLoader batch_size = {batch_size}")
 
     transform_pipeline = ("state_only" if model_name in ["mlp_planner", "transformer_planner"] else "image_only")    
-    # Load data
     dataloader = load_data(
       dataset_path="/content/homework4/drive_data/train",
       transform_pipeline=transform_pipeline,  # Load validation images in batches of 32, no random changes here because we are using this to test on how good th model is
@@ -25,31 +24,26 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
       shuffle=True,)
 
 
-
-    # Load model
     model = load_model(model_name)
     model.to(device)
-
-    # Setup optimizer and loss
     optimizer = Adam(model.parameters(), lr=lr)
     loss_fn = HuberLoss(delta=1.0)
 
-    # Training loop
-    for epoch in range(num_epoch):
+    for epoch in range(num_epoch): 
         model.train()
         total_loss = 0.0
 
         for batch in dataloader:
-            track_left = batch.get("track_left", None)
-            track_right = batch.get("track_right", None)
-            image = batch.get("image", None)
-            waypoints = batch["waypoints"].to(device)
+            track_left = batch.get("track_left", None) # Getting the input data
+            track_right = batch.get("track_right", None) # Getting inputs Data
+            image = batch.get("image", None) # GEtting input Data
+            waypoints = batch["waypoints"].to(device) 
             mask = batch["waypoints_mask"].to(device)
 
-            # Select model input
+            
             if model_name in ["mlp_planner", "transformer_planner"]:
               if track_left is None or track_right is None:
-                print("Skipping batch with missing track data")
+                print("Missing track data")
                 continue
               
               track_left = track_left.to(device)
@@ -60,52 +54,40 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
         }
             elif model_name == "cnn_planner":
               if image is None:
-                print("Skipping batch with missing image data")
+                print("Missing image data")
                 continue
               inputs = {
                 "image": image.to(device),
         }
             else:
-              raise ValueError(f"Unknown model: {model_name}")
+              raise ValueError(f"Mispelled: {model_name}")
             
             
-            pred = model(**inputs)
-            #print(f"track_left: {track_left.shape}, device: {track_left.device}")
-            #print(f"track_right: {track_right.shape}, device: {track_right.device}")
-            #print(f"Model is on device: {next(model.parameters()).device}")
-            #print(f"pred.shape = {pred.shape}")
-
+            pred = model(**inputs) # Getting the predicted waypint 
             
-            # We are training a race car AI and every car (in a batch) sees a track
-            # and gives 3 guesses about where to drive next like checkpoints
-            # So if we have 64 cars in one roundm we have 192 guesses because
-            # 64 * 3 guesses each = 192 guesses
-            # Not all guesses are valid, some give shitty advice like driving 
-            # off a cliff, so we use a mask to say which are good
-            # So we are giving every car's guesses in 1 long line, and we flatten 
-            # The mask in a long list of yes or no:
-            # We say: only_good_guesses = guesses[mask], no shape mismatch, pytorch is happy
-            pred_flat = pred.view(-1, 2)
+            pred_flat = pred.view(-1, 2) # Flatten predictions
             waypoints_flat = waypoints.view(-1, 2)
-            mask_flat = mask.view(-1).bool()
+            mask_flat = mask.view(-1).bool() # Flatten the mask from (B, waypoints)
 
+            # Apply the mask to select only valid waypoints
             pred_masked = pred_flat[mask_flat]
             waypoints_masked = waypoints_flat[mask_flat]
 
+            # Compute loss onlyon the valid masked waypoints
             loss = loss_fn(pred_masked, waypoints_masked)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+            # Accumulate total loss for this epoch (for monitoring)
             total_loss += loss.item()
 
         avg_loss = total_loss / len(dataloader)
         print(f"Epoch {epoch + 1}/{num_epoch}: Loss = {avg_loss:.4f}")
 
-    # Save model
     path = save_model(model)
-    print(f"Model saved to {path}")
+    print(f"Model saved")
 
 
 if __name__ == "__main__":
