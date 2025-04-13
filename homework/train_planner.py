@@ -1,7 +1,7 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader
-from torch.nn import HuberLoss
+import torch.nn.functional as F
 from torch.optim import Adam
 from homework.datasets.road_dataset import load_data
 from homework.models import load_model, save_model
@@ -27,7 +27,7 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
     model = load_model(model_name)
     model.to(device)
     optimizer = Adam(model.parameters(), lr=lr)
-    loss_fn = HuberLoss(delta=1.0)
+    #loss_fn = HuberLoss(delta=1.0)
 
     for epoch in range(num_epoch): 
         model.train()
@@ -72,9 +72,10 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
             # Apply the mask to select only valid waypoints
             pred_masked = pred_flat[mask_flat]
             waypoints_masked = waypoints_flat[mask_flat]
+            lat_loss = F.smooth_l1_loss(pred_masked[:, 0], waypoints_masked[:, 0])
+            lon_loss = F.smooth_l1_loss(pred_masked[:, 1], waypoints_masked[:, 1])
+            loss = 3.0 * lat_loss + lon_loss
 
-            # Compute loss onlyon the valid masked waypoints
-            loss = loss_fn(pred_masked, waypoints_masked)
 
             optimizer.zero_grad()
             loss.backward()
