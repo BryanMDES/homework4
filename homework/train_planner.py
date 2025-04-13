@@ -27,7 +27,11 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
     model = load_model(model_name)
     model.to(device)
     optimizer = Adam(model.parameters(), lr=lr)
-    #loss_fn = HuberLoss(delta=1.0)
+    best_loss = float("inf")
+    best_model_state = None
+    best_lat_error = float("inf")
+    best_lon_error = float("inf")
+  
 
     for epoch in range(num_epoch): 
         model.train()
@@ -67,7 +71,7 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
             
             pred_flat = pred.view(-1, 2) # Flatten predictions
             waypoints_flat = waypoints.view(-1, 2)
-            mask_flat = mask.view(-1).bool() # Flatten the mask from (B, waypoints)
+            mask_flat = mask.view(-1).bool() # Flatten the mask
 
             # Apply the mask to select only valid waypoints
             pred_masked = pred_flat[mask_flat]
@@ -81,16 +85,67 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
             loss.backward()
             optimizer.step()
 
-            # Accumulate total loss for this epoch (for monitoring)
+            # total loss for this epoch to monitor
             total_loss += loss.item()
 
-        avg_loss = total_loss / len(dataloader)
-        print(f"Epoch {epoch + 1}/{num_epoch}: Loss = {avg_loss:.4f}")
 
-    path = save_model(model)
-    print(f"Model saved")
+        # Evaluate metrics at end of epoch
+        model.eval()
+        with torch.no_grad():
+          lat_errors = []
+          lon_errors = []
+
+          for batch in dataloader:
+            track_left = batch.get("track_left", None)
+            track_right = batch.get("track_right", None)
+            image = batch.get("image", None)
+            waypoints = batch["waypoints"].to(device)
+            mask = batch["waypoints_mask"].to(device)
+
+            if model_name in ["mlp_planner", "transformer_planner"]:
+              if track_left is None or track_right is None:
+                  continue
+              inputs = {
+                  "track_left": track_left.to(device),
+                  "track_right": track_right.to(device),
+              }
+            elif model_name == "cnn_planner":
+              if image is None:
+                 continue
+              inputs = {"image": image.to(device)}
+            else:
+              continue
+
+            pred = model(**inputs)
+            pred = pred.view(-1, 2)
+            waypoints = waypoints.view(-1, 2)
+            mask = mask.view(-1).bool()
+
+            pred_masked = pred[mask]
+            waypoints_masked = waypoints[mask]
+
+            lat_error = F.l1_loss(pred_masked[:, 0], waypoints_masked[:, 0])
+            lon_error = F.l1_loss(pred_masked[:, 1], waypoints_masked[:, 1])
+
+            lat_errors.append(lat_error.item())
+            lon_errors.append(lon_error.item())
+
+        avg_lat = sum(lat_errors) / len(lat_errors)
+        avg_lon = sum(lon_errors) / len(lon_errors)
+
+        if avg_lat < best_lat_error and avg_lon < best_lon_error:
+          best_lat_error = avg_lat
+          best_lon_error = avg_lon
+          best_model_state = model.state_dict()
+          print(f"Saved best model at epoch {epoch + 1} | lat: {avg_lat:.4f}, lon: {avg_lon:.4f}")
+
+    if best_model_state is not None:
+      model.load_state_dict(best_model_state)
+      path = save_model(model)
+      print(f"Best model saved with lat={best_lat_error:.4f}, lon={best_lon_error:.4f}")
 
 
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, required=True, help="mlp_planner / transformer_planner / cnn_planner")
