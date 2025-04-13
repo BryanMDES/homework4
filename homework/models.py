@@ -51,20 +51,12 @@ class MLPPlanner(nn.Module):
         Returns:
             torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
         """
-
-        def normalize(t):
-          mean = t.mean(dim=1, keepdim=True)
-          std = t.std(dim=1, keepdim=True) + 1e-6
-          return (t - mean) / std
-
-        # Combining both sides of the road
-        track_left = normalize(track_left)
-        track_right = normalize(track_right)
-        x = torch.cat([track_left, track_right], dim=1)
-
-        x = x.view(x.size(0), -1) # Model receiving one long row of numbers
-        out = self.net(x) # Pass the flattened road into the MLD to guess the next way points
-
+        track = torch.cat([track_left, track_right], dim=1)
+        mean = track.mean(dim=1, keepdim=True) # Normalize together
+        std = track.std(dim=1, keepdim=True) + 1e-6
+        track = (track - mean) / std
+        x = track.view(track.size(0), -1) # Feed to MLP
+        out = self.net(x)
         return out.view(-1, self.n_waypoints, 2)
 
 
