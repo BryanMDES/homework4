@@ -116,13 +116,13 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
             else:
               continue
 
-            pred = model(**inputs)
-            pred = pred.view(-1, 2)
+            pred = model(**inputs) # Providing predictions
+            pred = pred.view(-1, 2) #Flatten
             waypoints = waypoints.view(-1, 2)
             mask = mask.view(-1).bool()
 
-            pred_masked = pred[mask]
-            waypoints_masked = waypoints[mask]
+            pred_masked = pred[mask] # Providing predictoins that actually matter
+            waypoints_masked = waypoints[mask] # Same for the targets
 
             lat_error = F.l1_loss(pred_masked[:, 0], waypoints_masked[:, 0])
             lon_error = F.l1_loss(pred_masked[:, 1], waypoints_masked[:, 1])
@@ -133,15 +133,15 @@ def train(model_name, num_epoch, lr, batch_size=64, device=None):
         avg_lat = sum(lat_errors) / len(lat_errors)
         avg_lon = sum(lon_errors) / len(lon_errors)
 
-        if avg_lat < best_lat_error and avg_lon < best_lon_error:
+        if avg_lat < best_lat_error and avg_lon < best_lon_error: # Both need to be better
           best_lat_error = avg_lat
           best_lon_error = avg_lon
-          best_model_state = model.state_dict()
+          best_model_state = model.state_dict() # Save the best model
           print(f"Saved best model at epoch {epoch + 1} | lat: {avg_lat:.4f}, lon: {avg_lon:.4f}")
 
     if best_model_state is not None:
       model.load_state_dict(best_model_state)
-      path = save_model(model)
+      path = save_model(model) # Save it forever
       print(f"Best model saved with lat={best_lat_error:.4f}, lon={best_lon_error:.4f}")
 
 
